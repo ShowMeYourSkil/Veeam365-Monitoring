@@ -14,6 +14,8 @@
 $output_jobs_failed_counter = 0;
 $output_jobs_warning_counter = 0;
 $output_jobs_success_counter = 0;
+$output_jobs_running_counter = 0;
+$output_jobs_disabled_counter = 0;
 
 $jobs = Get-VBOJob
 $lastStatus = $job.LastStatus
@@ -30,7 +32,8 @@ ForEach($job in $jobs)
     $lastStatus = $job.LastStatus
     $isenabled = $jobs.IsEnabled
     if ($isenabled -eq "True") {
-        Write-Host "Das Backup ist" $backupname "deaktiviert";
+        Write-Host "Disabled: $backupname ($lastRun)";
+        $output_jobs_disabled_counter++;
         exit 1;
     }elseif($lastStatus -eq "Running"){
         Write-Host "The BackupJob $backupname running"
@@ -38,17 +41,19 @@ ForEach($job in $jobs)
     }
     elseif($lastStatus -eq "Failed")
     {
-        Write-Host "The Backupjob $backupname is in critical state";
+        Write-Host "Critical: $backupname ($lastRun)";
         $output_jobs_failed_counter++;
         exit 2;
     } elseif($lastStatus -eq "Warning"){
-        Write-Host "The Backupjob $backupname is in critical state";
+        Write-Host "Warning: $backupname ($lastRun)";
         $output_jobs_warning_counter++;
         exit 1;
     } elseif($lastStatus -eq "Success")
     {
-        Write-Host "The Backupjob $backupname has run successfully";
+        Write-Host "Success: $backupname ($lastRun)";
         $output_jobs_success_counter++;
         exit 0;
     }
 }
+
+$output_jobs_success_counter = $output_jobs_running_counter + $output_jobs_success_counter;
