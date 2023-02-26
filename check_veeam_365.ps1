@@ -4,56 +4,103 @@
     0 Service state is OK.
     1 Service state is WARNING.
     2 Service state is CRITICAL.
-    3 Servuce state is UNKNOWN.
+    3 Service state is UNKNOWN.
 
     Author David Franzen
     Copyright (c) David Franzen
     Version: v1.2
 #>
 
-$output_jobs_failed_counter = 0;
-$output_jobs_warning_counter = 0;
-$output_jobs_success_counter = 0;
-$output_jobs_running_counter = 0;
-$output_jobs_disabled_counter = 0;
+$EXIT_OK = 0       #Service state is OK.
+$EXIT_WARNING = 1  #Service state is WARNING.
+$EXIT_CRITICAL = 2 #Service state is CRITICAL.
+$EXIT_UNKOWN = 3   #Service state is UNKNOWN.
+
+$output_jobs_failed_counter = 0
+$output_jobs_warning_counter = 0
+$output_jobs_success_counter = 0
+$output_jobs_running_counter = 0
+$output_jobs_disabled_counter = 0
 
 $jobs = Get-VBOJob
 $lastStatus = $job.LastStatus
 $lastRun = $job.LasRun
-#$organization = $job.Organization
-$backupname = $job.name
 
+$exitcode = $EXIT_OK
+
+$licenses = Get-VBOLicense
+
+#Imports the Veeam365 Powershell module
 $VeeamModulePath = "C:\Program Files\Veeam\Backup365\Veeam.Archiver.PowerShell"
 $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$VeeamModulePath"
 Import-Module Veeam.Archiver.PowerShell
 
-ForEach($job in $jobs)
+#Checks the status of the Veeam 365 subscription
+ForEach($license in $licenses)
 {
-    $lastStatus = $job.LastStatus
-    $isenabled = $jobs.IsEnabled
-    if ($isenabled -eq "True") {
-        Write-Host "Disabled: $backupname ($lastRun)";
-        $output_jobs_disabled_counter++;
-        exit 1;
-    }elseif($lastStatus -eq "Running"){
-        Write-Host "The BackupJob $backupname running"
-        exit 0;
+    $licensestatus = $license.status
+    $licenseLifetime = $license.ExpirationDate
+    $licenseSupport = $license.SupportExpirationDate
+
+    $usedLicenses = $license.UsedNumber
+    $totalLicenses = $license.TotalNumber
+
+    if($licensestatus -eq "Valid"){
+        Write-Host "OK: License is" $licensestatus
+        $exitcode = $EXIT_OK
+        if($usedLicenses -gt $totalLicenses){
+            Write-Host "$usedLicenses out of $totalLicenses licenses are claimed."
+            $exitcode = $EXIT_WARNING
+        }elseif ($usedLicenses -lt $totalLicenses){
+            Write-Host "$usedLicenses out of $totalLicenses licenses are claimed."
+        }
+    }else{
+        Write-Host "Critical: License is" $licensestatus
+        $exitcode = $EXIT_CRITICAL
     }
-    elseif($lastStatus -eq "Failed")
-    {
-        Write-Host "Critical: $backupname ($lastRun)";
-        $output_jobs_failed_counter++;
-        exit 2;
-    } elseif($lastStatus -eq "Warning"){
-        Write-Host "Warning: $backupname ($lastRun)";
-        $output_jobs_warning_counter++;
-        exit 1;
-    } elseif($lastStatus -eq "Success")
-    {
-        Write-Host "Success: $backupname ($lastRun)";
-        $output_jobs_success_counter++;
-        exit 0;
+
+    if ($licenseLifetime) {
+        Write-Host "License ist gueltig"
+        $exitcode = $EXIT_OK
+    }else{
+        Write-Host "License ist ungueltig"
+        $exitcode = $EXIT_CRITICAL
+    }
+    if ($licenseSupport) {
+        Write-Host "Support ist vorhanden"
+        $exitcode = $EXIT_OK
+    }else{
+        Write-Host "Support ist ausgelaufen"
+        $exitcode = $EXIT_CRITICAL
     }
 }
 
-$output_jobs_success_counter = $output_jobs_running_counter + $output_jobs_success_counter;
+# Check the status of the backup jobs
+ForEach($job in $jobs)
+{
+    $lastStatus = $job.LastStatus
+    $backupname = $job.name
+    #$runtime = $lastRun.CreationTime.toString("dd.MM.yyyy")
+
+    if($lastStatus -eq "Running"){
+        Write-Host "Running:" $backupname - $runtime
+        $exitcode = $EXIT_OK
+    }
+    elseif($lastStatus -eq "Failed")
+    {
+        Write-Host "Critical:" $backupname;
+        $output_jobs_failed_counter++;
+        $exitcode = $EXIT_CRITICAL
+    } elseif($lastStatus -eq "Warning"){
+        Write-Host "Warning:" $backupname;
+        $output_jobs_warning_counter++;
+        $exitcode = $EXIT_WARNING
+    } elseif($lastStatus -eq "Success")
+    {
+        Write-Host "Success:" $backupname;
+        $output_jobs_success_counter++;
+        $exitcode = $EXIT_OK
+    }
+}
+
+exit $exitcode
