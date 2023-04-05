@@ -14,7 +14,7 @@
 $EXIT_OK = 0       #Service state is OK.
 $EXIT_WARNING = 1  #Service state is WARNING.
 $EXIT_CRITICAL = 2 #Service state is CRITICAL.
-$EXIT_UNKOWN = 3   #Service state is UNKNOWN.
+$EXIT_UNKNOWN= 3   #Service state is UNKNOWN.
 
 $output_jobs_failed_counter = 0
 $output_jobs_warning_counter = 0
@@ -35,7 +35,9 @@ $VeeamModulePath = "C:\Program Files\Veeam\Backup365\Veeam.Archiver.PowerShell"
 $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$VeeamModulePath"
 Import-Module Veeam.Archiver.PowerShell
 
-#Checks the status of the Veeam 365 subscription
+# Checks the status of the Veeam 365 subscription
+# The general license status is checked.
+# It checks how many licenses are in use and whether the licenses are still valid.
 ForEach($license in $licenses)
 {
     $licensestatus = $license.status
@@ -45,6 +47,8 @@ ForEach($license in $licenses)
     $usedLicenses = $license.UsedNumber
     $totalLicenses = $license.TotalNumber
 
+    # Checks the utilization of the licenses. If more licenses are in use than available, the exit code EXIT_WARNING is taken. 
+    # Veeam allows an over-utilization of licenses of 10%.
     if($licensestatus -eq "Valid"){
         Write-Host "OK: License is" $licensestatus
         $exitcode = $EXIT_OK
@@ -58,6 +62,12 @@ ForEach($license in $licenses)
         Write-Host "Critical: License is" $licensestatus
         $exitcode = $EXIT_CRITICAL
     }
+
+    <# Monitoring license lifetime.
+    Veeam uses two licenses during licensing.
+    Veeam 365 Backup license and Veeam 365 Support license. 
+    Here the validity of the two license types is read out with a simple if else branch.
+    #>
 
     if ($licenseLifetime) {
         Write-Host "License ist gueltig"
