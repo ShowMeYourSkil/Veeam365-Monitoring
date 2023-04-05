@@ -1,8 +1,9 @@
 # Intro 
 
-This check monitors the backup status and health of Veeam Backup for Microsoft 365. 
-
+This check monitors the backup status and health of Veeam Backup for Microsoft 365 (Veeam 365). 
 If something is wrong with your Veeam Backup for Microsoft 365, you will receive an alert in Icinga/Nagios.
+
+If you have any wishes or suggestions you are welcome to let me know by submitting an issue or a pull request. 😄
 
 ---
 
@@ -28,6 +29,7 @@ I have developed the Powershell script using the Official Powershell Module of V
 
   *Veeam 365 Powershell References*
   
-  ---
- Copyright (c) 2023 David Franzen
- Covered by MIT License.
+---
+Copyright (c) 2023 David Franzen
+
+Covered by MIT License.
