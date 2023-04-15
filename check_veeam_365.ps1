@@ -1,5 +1,5 @@
 <#
-    A Powershell script that checks the backup status of Veeam Backup for Microsoft 365.
+    A Powershell script that checks the status of Veeam Backup for Microsoft 365.
 
     0 Service state is OK.
     1 Service state is WARNING.
@@ -49,16 +49,16 @@ ForEach($job in $jobs)
     #$runtime = $lastRun.CreationTime.toString("dd.MM.yyyy")
 
     if($lastStatus -eq "Running"){
-        Write-Host "Running:" $backupname - $runtime
+        Write-Host "Running:" $backupname
         $exitcode = $EXIT_OK
     }
     elseif($lastStatus -eq "Failed")
     {
-        Write-Host "Critical:" $backupname -ForegroundColor Red
+        Write-Host "Critical:" $backupname -ForegroundColor Red #The output is marked red
         $output_jobs_failed_counter++
         $exitcode = $EXIT_CRITICAL
     } elseif($lastStatus -eq "Warning"){
-        Write-Host "Warning:" $backupname -ForegroundColor Yellow
+        Write-Host "Warning:" $backupname -ForegroundColor Yellow #The output is marked yellow
         $output_jobs_warning_counter++
         $exitcode = $EXIT_WARNING
     } elseif($lastStatus -eq "Success")
@@ -84,14 +84,14 @@ ForEach($license in $licenses)
         Write-Host "OK: License is" $licensestatus
         $exitcode = $EXIT_OK
         if($usedLicenses -ge $totalLicenses){
-            Write-Host "Warning: $usedLicenses out of $totalLicenses licenses are claimed." -ForegroundColor Yellow
+            Write-Host "Warning: $usedLicenses out of $totalLicenses licenses are claimed." -ForegroundColor Yellow #The output is marked yellow
             $exitcode = $EXIT_WARNING
         }elseif ($usedLicenses -lt $totalLicenses){
             Write-Host "OK: $usedLicenses out of $totalLicenses licenses are claimed."
             $exitcode = $EXIT_OK
         }
     }else{
-        Write-Host "Critical: License is" $licensestatus -ForegroundColor Red
+        Write-Host "Critical: License is" $licensestatus -ForegroundColor Red #The output is marked red
         $exitcode = $EXIT_CRITICAL
     }
 
@@ -105,9 +105,12 @@ ForEach($license in $licenses)
         Write-Host "Support is valid"
         $exitcode = $EXIT_OK
     }else{
-        Write-Host "Support is valid" -ForegroundColor Red
+        Write-Host "Support is valid" -ForegroundColor Red #The output is marked red
         $exitcode = $EXIT_CRITICAL
     }
+    exit $exitcode
 }
-
-exit $exitcode
+catch[System.SystemException]{
+    Write-Host $_
+     exit $EXIT_UNKNOWN
+}
