@@ -102,12 +102,11 @@ ForEach($license in $licenses)
     Here the validity of the two license types is read out with a simple if else branch.
     #>
 
-    #if ($licenseSupport) {
     if ($licenseLifetime) {
         $support_status = "Support is valid"
         $exitcode = $EXIT_OK
     }else{
-        $support_status = "Support is valid"
+        $support_status = "Support is invalid (no license found)"
         $exitcode = $EXIT_CRITICAL
     }
 
