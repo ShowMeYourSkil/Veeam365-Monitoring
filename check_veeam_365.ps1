@@ -8,7 +8,7 @@
 
     Author David Franzen
     Copyright (c) David Franzen
-    Version: v1.2
+    Version: v1.3
 
     Tested on: Veeam Backup for Microsoft 365 V6
 #>
