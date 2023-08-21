@@ -10,7 +10,7 @@
     Copyright (c) David Franzen
     Version: v1.2
 
-    Tested on: Veeam Backup for Microsoft 365 V6 
+    Tested on: Veeam Backup for Microsoft 365 V6
 #>
 
 $EXIT_OK = 0       #Service state is OK.
@@ -25,6 +25,7 @@ $output_jobs_running_counter = 0
 $output_jobs_disabled_counter = 0
 
 $jobs = Get-VBOJob
+$jobCounter = $jobs.Count
 $lastStatus = $job.LastStatus
 $lastRun = $job.LasRun
 
@@ -54,17 +55,18 @@ ForEach($job in $jobs)
     }
     elseif($lastStatus -eq "Failed")
     {
-        Write-Host "Critical:" $backupname -ForegroundColor Red #The output is marked red
+        $critical_jobs += "Critical: $backupname`n"
         $output_jobs_failed_counter++
         $exitcode = $EXIT_CRITICAL
     } elseif($lastStatus -eq "Warning"){
-        Write-Host "Warning:" $backupname -ForegroundColor Yellow #The output is marked yellow
+        $warning_jobs += "Warning: $backupname`n"
         $output_jobs_warning_counter++
         $exitcode = $EXIT_WARNING
     } elseif($lastStatus -eq "Success")
     {
-        Write-Host "Success:" $backupname
+        #Write-Host "Success:" $backupname
         $output_jobs_success_counter++
+        $successful_jobs = "{0} of {1} jobs successful." -f $output_jobs_success_counter,$jobCounter
         $exitcode = $EXIT_OK
     }
 }
@@ -78,36 +80,46 @@ ForEach($license in $licenses)
     $usedLicenses = $license.UsedNumber
     $totalLicenses = $license.TotalNumber
 
-    # Checks the utilization of the licenses. If more licenses are in use than available, the exit code EXIT_WARNING is taken. 
+    # Checks the utilization of the licenses. If more licenses are in use than available, the exit code EXIT_WARNING is taken.
     # Veeam allows an over-utilization of licenses of 10%.
     if($licenseLifetime){
-        Write-Host "OK: License is" $licensestatus
+        $license_status = "OK: License is $licensestatus"
         $exitcode = $EXIT_OK
         if($usedLicenses -ge $totalLicenses){
-            Write-Host "Warning: $usedLicenses out of $totalLicenses licenses are claimed." -ForegroundColor Yellow #The output is marked yellow
+            $license_usage = "Warning: $usedLicenses out of $totalLicenses licenses are claimed."
             $exitcode = $EXIT_WARNING
         }elseif ($usedLicenses -lt $totalLicenses){
-            Write-Host "OK: $usedLicenses out of $totalLicenses licenses are claimed."
+            $license_usage = "OK: $usedLicenses out of $totalLicenses licenses are claimed."
             $exitcode = $EXIT_OK
         }
     }else{
-        Write-Host "Critical: License is" $licensestatus -ForegroundColor Red #The output is marked red
-        $exitcode = $EXIT_CRITICAL
+        $license_status = "Critical: License is $licensestatus"
     }
 
     <# Monitoring license lifetime.
     Veeam uses two licenses during licensing.
-    Veeam 365 Backup license and Veeam 365 Support license. 
+    Veeam 365 Backup license and Veeam 365 Support license.
     Here the validity of the two license types is read out with a simple if else branch.
     #>
 
-    if ($licenseSupport) {
-        Write-Host "Support is valid"
+    if ($licenseLifetime) {
+        $support_status = "Support is valid"
         $exitcode = $EXIT_OK
     }else{
-        Write-Host "Support is valid" -ForegroundColor Red #The output is marked red
+        $support_status = "Support is invalid (no license found)"
         $exitcode = $EXIT_CRITICAL
     }
+
+    if($output_jobs_failed_counter -gt 0){
+        write-Host "Failed Jobs founds. $successful_jobs $license_status, $license_usage $support_status`n$critical_jobs $warning_jobs"
+    }
+    elseif($output_jobs_warning_counter -gt 0){
+        write-Host "Failed Jobs founds. $successful_jobs $license_status, $license_usage $support_status`n$warning_jobs"
+    }
+    else{
+        write-Host "$successful_jobs $license_status, $license_usage $support_status"
+    }
+
     exit $exitcode
 }
 catch[System.SystemException]{
